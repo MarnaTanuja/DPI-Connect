@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/data/
+.pytest_cache/
+commands_.txt

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPI Connect</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <h1 class="wordmark">DPI Connect</h1>
+    <p class="auth-tagline">Request, verify, and consent to data connections between organizations — mapped, scored, and exchanged over a signed secure channel.</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Sign in with a key</button>
+      <button class="auth-tab" data-tab="register">Register an organization</button>
+    </div>
+
+    <form id="login-form" class="auth-form">
+      <label for="login-key">Organization API key</label>
+      <input id="login-key" type="text" placeholder="Paste the key you saved at registration" required>
+      <button type="submit" class="btn btn-primary">Sign in</button>
+      <p id="login-error" class="form-error"></p>
+    </form>
+
+    <form id="register-form" class="auth-form hidden">
+      <label for="reg-name">Organization name</label>
+      <input id="reg-name" type="text" placeholder="e.g. Land Registry Authority" required>
+      <label for="reg-email">Contact email</label>
+      <input id="reg-email" type="email" placeholder="data-office@example.gov" required>
+      <button type="submit" class="btn btn-primary">Register</button>
+      <p id="register-error" class="form-error"></p>
+    </form>
+
+    <div id="new-key-banner" class="new-key-banner hidden">
+      <strong>Save this API key now — it won't be shown again.</strong>
+      <code id="new-key-value"></code>
+      <button id="copy-key-btn" class="btn btn-ghost btn-small">Copy</button>
+      <button id="continue-with-key-btn" class="btn btn-primary btn-small">Continue to DPI Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app-shell" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="org-identity">
+      <span class="org-name" id="org-name-display"></span>
+      <button id="sign-out-btn" class="link-btn">Sign out</button>
+    </div>
+    <h1 class="wordmark wordmark-small">DPI Connect</h1>
+    <nav class="nav">
+      <button class="nav-link active" data-view="overview">Overview</button>
+      <button class="nav-link" data-view="datasets">My Datasets</button>
+      <button class="nav-link" data-view="request">Request a Connection</button>
+      <button class="nav-link" data-view="mine">My Requests</button>
+      <button class="nav-link" data-view="incoming">Incoming Requests</button>
+    </nav>
+  </aside>
+
+  <main class="main-panel">
+
+    <!-- OVERVIEW -->
+    <section id="view-overview" class="view">
+      <h2>Overview</h2>
+      <p class="view-intro">How a connection moves from request to a shared dataset:</p>
+      <ol class="workflow-steps">
+        <li><strong>Upload a dataset.</strong> We infer its field structure automatically — no manual schema-writing.</li>
+        <li><strong>Request a connection</strong> to another organization, pointing at what you have and what shape of data you want from them.</li>
+        <li><strong>We score the fit</strong> immediately — how well their fields map onto yours — and show you the breakdown.</li>
+        <li><strong>They review and consent.</strong> They see the same similarity report before deciding, and sign a short agreement.</li>
+        <li><strong>The channel opens</strong> over a signed secure exchange, and you pull one combined dataset — your records plus theirs, mapped into your shape.</li>
+      </ol>
+      <div class="stat-row">
+        <div class="stat"><span class="stat-value" id="stat-datasets">—</span><span class="stat-label">datasets</span></div>
+        <div class="stat"><span class="stat-value" id="stat-outgoing">—</span><span class="stat-label">requests sent</span></div>
+        <div class="stat"><span class="stat-value" id="stat-incoming">—</span><span class="stat-label">awaiting your consent</span></div>
+      </div>
+    </section>
+
+    <!-- DATASETS -->
+    <section id="view-datasets" class="view hidden">
+      <h2>My Datasets</h2>
+      <p class="view-intro">Upload sample records for a dataset. We'll infer its fields automatically — this is what other organizations will see (structure only, never your rows) when deciding whether to connect.</p>
+
+      <div id="dataset-list" class="row-list"></div>
+
+      <details class="upload-panel">
+        <summary>Upload a new dataset</summary>
+        <form id="dataset-form">
+          <label for="ds-name">Dataset name</label>
+          <input id="ds-name" type="text" placeholder="e.g. resident_records" required>
+
+          <label for="ds-json">Sample records (JSON array of objects)</label>
+          <textarea id="ds-json" rows="8" placeholder='[
+  {"full_name": "Ada Lovelace", "national_id": "AB123456"},
+  {"full_name": "Alan Turing", "national_id": "CD789012"}
+]' required></textarea>
+          <p class="field-hint">Paste a few representative rows — this is used to detect field names and types, not stored as your production data.</p>
+
+          <button type="submit" class="btn btn-primary">Upload dataset</button>
+          <p id="dataset-error" class="form-error"></p>
+        </form>
+      </details>
+    </section>
+
+    <!-- REQUEST CONNECTION -->
+    <section id="view-request" class="view hidden">
+      <h2>Request a Connection</h2>
+      <p class="view-intro">Pick another organization, tell us which of your datasets you're enriching and which of theirs you need, and we'll score the fit right away.</p>
+
+      <form id="request-form">
+        <label for="req-counterparty">Organization to connect with</label>
+        <select id="req-counterparty" required></select>
+
+        <label for="req-my-dataset">Your dataset (defines the shape you want back)</label>
+        <select id="req-my-dataset" required></select>
+
+        <label for="req-their-dataset">Their dataset (the data you're requesting)</label>
+        <select id="req-their-dataset" required disabled>
+          <option value="">Select an organization first…</option>
+        </select>
+
+        <label for="req-purpose">Purpose of this connection</label>
+        <textarea id="req-purpose" rows="3" placeholder="e.g. Enrich resident records with taxpayer identifiers to reduce duplicate registrations." required></textarea>
+
+        <button type="submit" class="btn btn-primary">Send connection request</button>
+        <p id="request-error" class="form-error"></p>
+      </form>
+
+      <div id="request-result" class="hidden"></div>
+    </section>
+
+    <!-- MY REQUESTS (outgoing) -->
+    <section id="view-mine" class="view hidden">
+      <h2>My Requests</h2>
+      <p class="view-intro">Connections you've initiated, and their status.</p>
+      <div id="mine-list" class="row-list"></div>
+    </section>
+
+    <!-- INCOMING REQUESTS -->
+    <section id="view-incoming" class="view hidden">
+      <h2>Incoming Requests</h2>
+      <p class="view-intro">Connections other organizations have requested from you. Review the similarity report before deciding.</p>
+      <div id="incoming-list" class="row-list"></div>
+    </section>
+
+    <!-- CONNECTION DETAIL (shared) -->
+    <section id="view-detail" class="view hidden">
+      <button class="link-btn back-link" id="detail-back-btn">&larr; Back</button>
+      <div id="detail-content"></div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
